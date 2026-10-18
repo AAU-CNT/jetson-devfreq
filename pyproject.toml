@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jetson-devfreq"
+version = "0.2.0"
+description = "CPU, GPU and memory (EMC) clock and governor control for NVIDIA Jetson Orin and DGX Spark"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["jetson", "orin", "dgx-spark", "devfreq", "cpufreq", "dvfs", "emc", "governor", "frequency"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Hardware",
+    "Typing :: Typed",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/AAU-CNT/jetson-devfreq"
+Source = "https://github.com/AAU-CNT/jetson-devfreq"
+Issues = "https://github.com/AAU-CNT/jetson-devfreq/issues"
+Changelog = "https://github.com/AAU-CNT/jetson-devfreq/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[project.scripts]
+jetson-devfreq = "jetson_devfreq.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+jetson_devfreq = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
