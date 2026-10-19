@@ -14,8 +14,12 @@ It wraps the kernel interfaces directly and has no dependencies:
 
 ## Install
 
+Install the wheel from the [latest GitHub release](https://github.com/AAU-CNT/jetson-devfreq/releases/latest):
+
 ```sh
-pip install jetson-devfreq
+pip install https://github.com/AAU-CNT/jetson-devfreq/releases/download/v0.2.0/jetson_devfreq-0.2.0-py3-none-any.whl
+# or straight from the tag:
+pip install "git+https://github.com/AAU-CNT/jetson-devfreq@v0.2.0"
 ```
 
 Changing clocks requires root, so run your script with `sudo`. If you use a virtualenv, run it as `sudo /path/to/venv/bin/python script.py`. EMC lives in debugfs, which is root-only even for reads. When running as a normal user, `Devfreq().emc` is `None`.

@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.2.0 (unreleased)
+## 0.2.0 (2026-10-19)
 
-First PyPI release. Renamed from `nvidia-devfreq` / `nvidia_devfreq`.
+First release.
 
 ### Added
 - `EmcController` (`Devfreq().emc`): memory clock control on Jetson Orin via BPMP debugfs (root only).
