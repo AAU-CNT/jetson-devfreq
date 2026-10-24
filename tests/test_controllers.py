@@ -195,6 +195,40 @@ def test_emc_pin_and_reset(agx: Path, writes: list) -> None:
     assert (emc.get_min_freq().freq_hz, emc.get_max_freq().freq_hz) == (204_000_000, 3_199_000_000)
 
 
+@pytest.mark.parametrize("content", [
+    "204000 665600 2133000 3199000",                     # no unit: small values taken as kHz
+    "204000000 665600000 2133000000 3199000000",         # no unit: Hz
+    "204 665.6 2133 3199 (MHz)",                         # non-integer tokens are skipped
+])
+def test_emc_possible_rates_formats(agx: Path, content: str) -> None:
+    put(agx, f"{EMC_DIR}/emc/possible_rates", content)
+    rates = [f.freq_hz for f in Devfreq(str(agx)).emc.list_frequencies()]
+    expected = [3_199_000_000, 2_133_000_000, 665_600_000, 204_000_000]
+    assert rates == ([3_199_000_000, 2_133_000_000, 204_000_000] if "665.6" in content else expected)
+
+
+def test_emc_cap_survives_lock(agx: Path) -> None:
+    # Locked, the cap node reads the locked rate; pinning back up must still work.
+    emc = Devfreq(str(agx)).emc
+    emc.pin_clock(204_000_000, settle_time=0)
+    put(agx, "sys/kernel/nvpmodel_clk_cap/emc", 204_000_000)
+    assert emc.get_cap().freq_hz == 3_199_000_000
+    assert emc.list_frequencies()[0].freq_hz == 3_199_000_000
+    emc.pin_clock(2_133_000_000, settle_time=0)
+    assert emc.get_current_freq().freq_hz == 2_133_000_000
+
+
+def test_emc_cap_unknown_when_found_locked(agx: Path) -> None:
+    put(agx, f"{EMC_DIR}/clk/emc/mrq_rate_locked", 1)
+    put(agx, "sys/kernel/nvpmodel_clk_cap/emc", 665_600_000)  # the locked rate, not the cap
+    emc = Devfreq(str(agx)).emc
+    assert emc.get_cap() is None
+    assert len(emc.list_frequencies()) == 4
+    emc.reset()  # unlocked: the cap node is trusted again
+    put(agx, "sys/kernel/nvpmodel_clk_cap/emc", 2_133_000_000)
+    assert emc.get_cap().freq_hz == 2_133_000_000
+
+
 def test_emc_without_possible_rates(agx: Path) -> None:
     (agx / EMC_DIR / "emc/possible_rates").unlink()
     emc = Devfreq(str(agx)).emc

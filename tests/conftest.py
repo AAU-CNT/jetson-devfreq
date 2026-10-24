@@ -66,7 +66,8 @@ def make_agx(root: Path) -> Path:
     put(root, f"{EMC_DIR}/clk/emc/max_rate", 3_199_000_000)
     put(root, f"{EMC_DIR}/clk/emc/mrq_rate_locked", 0)
     put(root, f"{EMC_DIR}/bwmgr/bwmgr_halt", 0)
-    put(root, f"{EMC_DIR}/emc/possible_rates", " ".join(map(str, EMC_RATES_KHZ)))
+    # As L4T R36 prints it: kHz values, then the unit
+    put(root, f"{EMC_DIR}/emc/possible_rates", " ".join(map(str, EMC_RATES_KHZ)) + " (kHz)")
     put(root, "sys/kernel/nvpmodel_clk_cap/emc", 3_199_000_000)
     return root
 

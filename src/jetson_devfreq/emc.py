@@ -8,8 +8,11 @@ from ._base import ClockController, ClockState, FreqInfo, _check_range, _mhz, _o
 from ._errors import DevfreqNotFoundError
 from ._sysfs import _SysfsNode
 
-# possible_rates values below this are taken to be kHz (EMC never runs under 10 MHz)
+# possible_rates values below this are taken to be kHz (EMC never runs under 10 MHz),
+# when the file names no unit
 _KHZ_THRESHOLD = 10_000_000
+# Unit tokens possible_rates may end with, e.g. "204000 665600 2133000 3199000 (kHz)"
+_UNITS = {"(hz)": 1, "(khz)": 1_000, "(mhz)": 1_000_000}
 
 
 class EmcController(ClockController):
@@ -26,8 +29,10 @@ class EmcController(ClockController):
         clk/emc/max_rate          — maximum rate in Hz (writable)
         clk/emc/mrq_rate_locked   — 1 = debugfs rate overrides kernel requests (writable)
         bwmgr/bwmgr_halt          — 1 = halt the BPMP bandwidth manager (writable, optional)
-        emc/possible_rates        — supported rates (optional)
-    Power-mode cap: /sys/kernel/nvpmodel_clk_cap/emc (Hz, world-readable).
+        emc/possible_rates        — supported rates, then a unit, e.g. "... 3199000 (kHz)" (optional)
+    Power-mode cap: /sys/kernel/nvpmodel_clk_cap/emc (Hz, world-readable). While
+    EMC is locked this node reads the locked rate instead (BPMP rounds every
+    request to it), so the cap is only read while unlocked and remembered.
 
     EMC has no kernel governor. The two "governors" exposed here map onto the
     lock flags: "bwmgr" lets the bandwidth manager scale EMC with demand, and
@@ -54,6 +59,8 @@ class EmcController(ClockController):
         # Bounds as found at construction; reset() falls back to these
         # when possible_rates is unavailable.
         self._initial_range = (self._min_rate.read_int(), self._max_rate.read_int())
+        self._cap_hz: Optional[int] = None
+        self.get_cap()  # remember the cap now, if EMC is unlocked
 
     @property
     def is_continuous(self) -> bool:
@@ -61,10 +68,18 @@ class EmcController(ClockController):
 
     # Public API
     def get_cap(self) -> Optional[FreqInfo]:
-        """Return the nvpmodel EMC cap for the current power mode, if exposed."""
+        """
+        Return the nvpmodel EMC cap for the current power mode, if exposed.
+
+        The cap node is only trusted while EMC is unlocked; while locked, the
+        last cap read unlocked by this controller is returned. None if EMC has
+        been locked since this controller was created (the cap is unknown).
+        """
         if self._cap is None or not self._cap.exists():
             return None
-        return FreqInfo(self._cap.read_int())
+        if not self._rate_locked.read_int():
+            self._cap_hz = self._cap.read_int()
+        return FreqInfo(self._cap_hz) if self._cap_hz is not None else None
 
     def list_governors(self) -> list[str]:
         return list(self.GOVERNORS)
@@ -76,7 +91,8 @@ class EmcController(ClockController):
     def list_frequencies(self) -> list[FreqInfo]:
         """
         Return supported EMC rates (at or below the power-mode cap), sorted descending.
-        Without possible_rates, returns [max, min] bounds instead.
+        Without possible_rates, returns [max, min] bounds instead. Not capped when the
+        cap is unknown (see get_cap()).
         """
         cap = self.get_cap()
         cap_hz = cap.freq_hz if cap else None
@@ -160,7 +176,12 @@ class EmcController(ClockController):
             self._bwmgr_halt.write(halt)
 
     def _hw_rates(self) -> list[int]:
-        values = [int(v) for v in self._possible_rates.read_list()]
-        if values and max(values) < _KHZ_THRESHOLD:
-            values = [v * 1000 for v in values]
-        return values
+        values, scale = [], None
+        for token in self._possible_rates.read_list():
+            if token.isdigit():
+                values.append(int(token))
+            elif token.lower() in _UNITS:
+                scale = _UNITS[token.lower()]
+        if scale is None:
+            scale = 1000 if values and max(values) < _KHZ_THRESHOLD else 1
+        return [v * scale for v in values]

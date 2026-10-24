@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- `EmcController` failed on every ladder or pin call on L4T R36: BPMP `possible_rates` ends in a
+  unit (`... 3199000 (kHz)`) that was parsed as a number. The unit is now read, and other
+  non-integer tokens are skipped.
+- After pinning EMC below the power-mode cap, higher rates were rejected as unavailable: while
+  EMC is locked, `/sys/kernel/nvpmodel_clk_cap/emc` reads the locked rate. The cap is now only
+  read while unlocked and remembered; `get_cap()` returns `None` if EMC has been locked since the
+  controller was created, and the ladder is then not capped.
+
 ## 0.2.0 (2026-10-19)
 
 First release.
