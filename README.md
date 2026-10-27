@@ -47,7 +47,7 @@ if dfc.emc:
 # Governor only
 dfc.cpu.set_governor("schedutil")
 
-dfc.restore_all(saved)   # back to exactly what was found
+dfc.restore_all(saved)   
 # or: dfc.reset_all()    # hardware range + default governor on every clock
 ```
 
